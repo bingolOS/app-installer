@@ -12,21 +12,46 @@ import (
 func clearScreen() {
 	cmd := exec.Command("clear")
 	cmd.Stdout = os.Stdout
-	cmd.Run()
+	_ = cmd.Run()
 }
+
+// ANSI colors
+const (
+	colorReset = "\033[0m"
+	colorGold  = "\033[38;5;220m" // 256-color "gold"
+	colorCyan  = "\033[36m"
+)
 
 // Print ASCII Banner
 func printBanner() {
-	banner := `
-  _     _                   _  ___  ____  
- | |__ (_)_ __   __ _  ___ | |/ _ \/ ___| 
- | '_ \| | '_ \ / _` + "`" + ` |/ _ \| | |
- | |_) | | | | | (_| | (_) | | |_| |___) |
- |_.__/|_|_| |_|\__, |\___/|_|\___/|____/ 
-                |___/                     
+	// New ASCII logo (your choice)
+	logo := `
+            _____________
+        .-'             '-.
+      .'   /\       /\     '.
+     /    /  \_____/  \      \
+    /    /             \      \
+   |    /   /\     /\   \     |
+   |   /   /  \___/  \   \    |
+   |  |   |           |   |   |
+   |  |   |     Y     |   |   |
+   |  |   |    / \    |   |   |
+   |   \   \__/   \__/   /    |
+    \    \             /     /
+     \    \___________/     /
+      '.                 .'
+        '-.___________.-'
+`
+
+	title := `
    Paket Yöneticisi
 `
-	fmt.Println("\033[36m" + banner + "\033[0m")
+
+	// Print in GOLD
+	fmt.Print(colorGold + logo + title + colorReset)
+
+	// (İstersen alttaki yazıyı cyan bırakabilirsin)
+	// fmt.Print(colorCyan + "Paket Yöneticisi\n" + colorReset)
 }
 
 // Check if a command exists
@@ -45,24 +70,15 @@ func installPackage() {
 
 	fmt.Println("Paket listesi getiriliyor... (Aramak için yazın)")
 
-	// We utilize fzf as a filter.
-	// To make it efficient, we can pump the list of all packages into fzf.
-	// However, distinct lists from pacman & yay can be huge.
-	// Optimized approach: Use fzf to display output of 'pacman -Sl' and 'yay -Sl'
+	usageCmd := fmt.Sprintf(
+		`%s -Slq | fzf --preview '%s -Si {}' --layout=reverse --height=90%% --header='YÜKLEMEK için paket seçin (Enter)'`,
+		pkgManager, pkgManager,
+	)
 
-	// Command to list all packages (repo + aur if yay exists)
-	// pacman -Slq lists all repo packages
-	// yay -Slq lists all aur packages (can be slow, might default to just repo if too slow, but user asked for yay)
-
-	usageCmd := fmt.Sprintf("%s -Slq | fzf --preview '%s -Si {}' --layout=reverse --height=90%% --header='YÜKLEMEK için paket seçin (Enter)'", pkgManager, pkgManager)
-
-	// Execute fzf via bash environment to handle pipes easily
 	cmd := exec.Command("bash", "-c", usageCmd)
 	cmd.Stderr = os.Stderr
 	output, err := cmd.Output()
-
 	if err != nil {
-		// usageCmd cancellation or error
 		return
 	}
 
@@ -78,24 +94,21 @@ func installPackage() {
 	installCmd.Stdin = os.Stdin
 	installCmd.Stdout = os.Stdout
 	installCmd.Stderr = os.Stderr
-	installCmd.Run()
+	_ = installCmd.Run()
 
 	fmt.Println("\nMenüye dönmek için Enter'a basın...")
-	bufio.NewReader(os.Stdin).ReadBytes('\n')
+	_, _ = bufio.NewReader(os.Stdin).ReadBytes('\n')
 }
 
 // Remove Package function
 func removePackage() {
 	fmt.Println("Kurulu paketler getiriliyor...")
 
-	// pacman -Qq lists installed packages names
-	// fzf -m enables multi-select (TAB to select)
 	usageCmd := "pacman -Qq | fzf -m --preview 'pacman -Qi {}' --layout=reverse --height=90% --header='KALDIRMAK için paket(leri) seçin (TAB ile çoklu seçim, Onaylamak için Enter)'"
 
 	cmd := exec.Command("bash", "-c", usageCmd)
 	cmd.Stderr = os.Stderr
 	output, err := cmd.Output()
-
 	if err != nil {
 		return
 	}
@@ -113,14 +126,13 @@ func removePackage() {
 
 	args := append([]string{"-Rns"}, pkgs...)
 	removeCmd := exec.Command("sudo", append([]string{"pacman"}, args...)...)
-
 	removeCmd.Stdin = os.Stdin
 	removeCmd.Stdout = os.Stdout
 	removeCmd.Stderr = os.Stderr
-	removeCmd.Run()
+	_ = removeCmd.Run()
 
 	fmt.Println("\nMenüye dönmek için Enter'a basın...")
-	bufio.NewReader(os.Stdin).ReadBytes('\n')
+	_, _ = bufio.NewReader(os.Stdin).ReadBytes('\n')
 }
 
 func main() {
